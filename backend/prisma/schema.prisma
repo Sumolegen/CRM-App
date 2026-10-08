@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model customers {
+  id        Int      @id(map: "PK_133ec679a801fab5e070f73d3ea") @default(autoincrement())
+  name      String   @db.VarChar(150)
+  email     String   @unique(map: "UQ_8536b8b85c06969f84f0c098b03") @db.VarChar(150)
+  phone     String?  @db.VarChar(50)
+  company   String?  @db.VarChar(100)
+  status    String   @default("Lead") @db.VarChar(50)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @db.Timestamp(6)
+}
+
+model refresh_tokens {
+  id        String   @id(map: "PK_7d8bee0204106019488c4c50ffa") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  token     String   @unique(map: "IDX_4542dd2f38a61354a040ba9fd5") @db.VarChar(500)
+  userId    String   @db.Uuid
+  isRevoked Boolean  @default(false)
+  expiresAt DateTime @db.Timestamp(6)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @db.Timestamp(6)
+  users     users    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "FK_610102b60fea1455310ccd299de")
+
+  @@index([userId], map: "IDX_610102b60fea1455310ccd299d")
+}
+
+model users {
+  id             String           @id(map: "PK_a3ffb1c0c8416b9fc6f907b7433") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email          String           @unique(map: "IDX_97672ac88f789774dd47f7c8be") @db.VarChar(190)
+  password       String           @db.VarChar(255)
+  name           String           @db.VarChar(150)
+  role           String           @default("user") @db.VarChar(50)
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime         @default(now()) @db.Timestamp(6)
+  refresh_tokens refresh_tokens[]
+}
