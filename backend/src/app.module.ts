@@ -1,21 +1,16 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
-import { Customer } from './customers/customer.entity.js';
+import { getDatabaseConfig } from './config/database.config.js';
+import { UsersModule } from './modules/users/users.module.js';
+import { AuthModule } from './modules/authentication/auth.module.js';
 import { CustomersModule } from './customers/customers.module.js';
-
-import { User } from './auth/entities/user.entity.js';
-import { Session } from './auth/entities/session.entity.js';
-import { OAuthAccount } from './auth/entities/oauth-account.entity.js';
-import { VerificationToken } from './auth/entities/verification-token.entity.js';
-import { LoginHistory } from './auth/entities/login-history.entity.js';
-import { AuthModule } from './auth/auth.module.js';
 
 @Module({
   imports: [
@@ -29,23 +24,15 @@ import { AuthModule } from './auth/auth.module.js';
         limit: 120, // 120 requests per minute
       },
     ]),
-    TypeOrmModule.forRoot({
-      type: 'better-sqlite3',
-      database: 'database.sqlite',
-      entities: [
-        Customer,
-        User,
-        Session,
-        OAuthAccount,
-        VerificationToken,
-        LoginHistory,
-      ],
-      synchronize: true, // Automatically creates tables according to entities in development
-      autoLoadEntities: true,
-      logging: false,
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        getDatabaseConfig(configService),
     }),
-    CustomersModule,
+    UsersModule,
     AuthModule,
+    CustomersModule,
   ],
   controllers: [AppController],
   providers: [
