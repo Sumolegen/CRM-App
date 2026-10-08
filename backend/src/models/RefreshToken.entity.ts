@@ -8,7 +8,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import type { User } from './user.entity.js';
+import { User } from './User.entity';
 
 @Entity('refresh_tokens')
 export class RefreshToken {
@@ -23,7 +23,7 @@ export class RefreshToken {
   @Column({ type: 'uuid' })
   userId: string;
 
-  @ManyToOne('User', 'refreshTokens', { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.refreshTokens, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user: User;
 
@@ -38,12 +38,4 @@ export class RefreshToken {
 
   @UpdateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
-
-  get isExpired(): boolean {
-    return new Date() > new Date(this.expiresAt);
-  }
-
-  get isValid(): boolean {
-    return !this.isRevoked && !this.isExpired;
-  }
 }

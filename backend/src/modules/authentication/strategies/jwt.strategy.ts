@@ -2,20 +2,18 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { UsersService } from '../users/users.service.js';
+import { UsersService } from '../../users/users.service';
 
 export interface JwtPayload {
   sub: string;
   email: string;
-  role?: string;
-  iat?: number;
-  exp?: number;
+  role: string;
 }
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private readonly configService: ConfigService,
+    configService: ConfigService,
     private readonly usersService: UsersService,
   ) {
     super({
@@ -23,25 +21,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       ignoreExpiration: false,
       secretOrKey:
         configService.get<string>('JWT_SECRET') ||
-        'super-secure-jwt-crm-secret-key-32-chars-long-minimum-prod',
+        'super_secret_jwt_access_key_change_in_production_crm_2026',
     });
   }
 
   async validate(payload: JwtPayload) {
-    if (!payload?.sub) {
-      throw new UnauthorizedException('Invalid token payload');
-    }
-
     const user = await this.usersService.findById(payload.sub);
-    if (!user) {
-      throw new UnauthorizedException('User account no longer exists');
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('User account is inactive or not found');
     }
 
-    if (!user.isActive) {
-      throw new UnauthorizedException('User account has been deactivated');
-    }
-
-    // Returned user is automatically attached to req.user
     return user;
   }
 }

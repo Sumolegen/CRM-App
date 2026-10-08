@@ -1,11 +1,7 @@
-import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from '../../entities/user.entity.js';
+import { User } from '../../models/User.entity';
 
 @Injectable()
 export class UsersService {
@@ -14,61 +10,42 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  /**
-   * Finds a user by email.
-   * @param email User email address
-   * @param includePassword Whether to include the password hash (which is select: false)
-   */
-  async findByEmail(
-    email: string,
-    includePassword = false,
-  ): Promise<User | null> {
-    const normalizedEmail = email.toLowerCase().trim();
+  async create(userData: Partial<User>): Promise<User> {
+    const existing = await this.userRepository.findOne({
+      where: { email: userData.email },
+    });
+
+    if (existing) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    const user = this.userRepository.create(userData);
+    return this.userRepository.save(user);
+  }
+
+  async findByEmail(email: string, includePassword = false): Promise<User | null> {
     if (includePassword) {
       return this.userRepository
         .createQueryBuilder('user')
         .addSelect('user.password')
-        .where('user.email = :email', { email: normalizedEmail })
+        .where('user.email = :email', { email })
         .getOne();
     }
 
     return this.userRepository.findOne({
-      where: { email: normalizedEmail },
+      where: { email },
     });
   }
 
-  /**
-   * Finds a user by their UUID primary key.
-   * @param id User UUID
-   */
-  async findById(id: string): Promise<User | null> {
-    return this.userRepository.findOne({
+  async findById(id: string): Promise<User> {
+    const user = await this.userRepository.findOne({
       where: { id },
     });
-  }
 
-  /**
-   * Creates a new user in the database.
-   * @param data User registration data
-   */
-  async create(data: {
-    email: string;
-    password: string;
-    name: string;
-    role?: string;
-  }): Promise<User> {
-    const existing = await this.findByEmail(data.email);
-    if (existing) {
-      throw new ConflictException('A user with this email already exists.');
+    if (!user) {
+      throw new NotFoundException(`User with ID "${id}" not found`);
     }
 
-    const user = this.userRepository.create({
-      email: data.email.toLowerCase().trim(),
-      password: data.password,
-      name: data.name.trim(),
-      role: data.role || 'user',
-    });
-
-    return this.userRepository.save(user);
+    return user;
   }
 }
